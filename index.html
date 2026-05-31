@@ -336,11 +336,24 @@
 const ADULT = 3500, CHILD = 2500, KM_RATE = 5.30;
 
 /* =========================================================
-   FYLLTEKST – bytt ut disse når programmet for samlingen er klart.
-   De vises i det ferdige brevet (PDF) inntil videre.
+   INNHOLD OM SAMLINGEN – endre her hvis noe skal oppdateres.
+   Vises i det ferdige brevet (PDF).
    ========================================================= */
-const TID_STED = '[Tid og sted for familiesamlingen settes inn her.]';
-const BESKRIVELSE = '[Her settes inn en kort beskrivelse av familiesamlingen/kurshelgen.]';
+const INVITASJON = 'Norsk Fosterhjemsforening Rogaland har gleden av å invitere til sin årlige familiesamling for fosterfamilier i regionen. Vi ønsker å skape en helg fylt med faglig påfyll, inspirasjon og sosialt fellesskap – for hele familien.';
+
+const STED_TEKST = 'Samlinga holdes på Stemnestaden leirsted ved Grindafjorden i Aksdal, kun 14 km fra Haugesund. Leirstedet byr på idylliske naturomgivelser, overnatting og full pensjon hele helgen – en rolig og skjermet ramme som legger til rette for gode samtaler og ekte fellesskap.';
+
+const FOREDRAGSHOLDERE = [
+  { navn:'Marco Elsafadi', tittel:'Relasjonshøvding',
+    tekst:'Marco Elsafadi er en av Norges mest etterspurte og prisbelønte foredragsholdere. Palestinsk flyktning og tidligere toppidrettsutøver med 12 år på det norske basketlandslaget. Han er dypt opptatt av relasjoners kraft, og holder foredrag om motivasjon, tillit, samspill og det å overkomme motgang. I 2006 ble han kåret til «Årets forbilde» ved Idrettsgallaen.' },
+  { navn:'Eskil Landsvik', tittel:'Psykologspesialist',
+    tekst:'Eskil Landsvik er psykologspesialist med bred erfaring innen relasjonspsykologi, traumebevisst omsorg og arbeid med barn og familier i sårbare livssituasjoner. Han formidler fagkunnskap på en tilgjengelig og praksisnær måte, og bidrar med faglig innsikt relevant for hverdagen som fosterforelder.' },
+  { navn:'Johanne Refseth', tittel:'«Psykolog med sovepose»',
+    tekst:'Johanne S. Refseth er psykolog og forfatter, bedre kjent som «Psykolog med sovepose». Gjennom sin bok og sitt foredragsarbeid kombinerer hun fagkunnskap med nærhet og humor – og løfter frem viktigheten av å møte barn der de er. Hennes tilnærming gjenkjennes og verdsettes av fosterforeldre over hele landet.' },
+];
+
+/* Tid og sted-linjen. Datoene settes inn når de er klare. */
+const TID_STED = 'Stemnestaden leirsted ved Grindafjorden i Aksdal. Dato: [settes inn når dette er klart].';
 
 const $ = id => document.getElementById(id);
 
@@ -424,37 +437,52 @@ function buildDoc(){
   const ML = 22, MR = PW-22, CW = MR-ML;
   const GREEN = [75,133,92], DARK = [39,75,52], INK = [36,48,41], SOFT=[90,103,95];
 
+  const TOP = 22, BOTTOM = PH - 22;
+  let y = 0, pageNo = 0;
+
   function setFont(style,size,color){
     doc.setFont('helvetica',style);
     doc.setFontSize(size);
     const col = color||INK; doc.setTextColor(col[0],col[1],col[2]);
   }
-  // paragraph -> returns y after
-  function para(text,y,opt){
+  function header(){
+    pageNo++;
+    if(pageNo>1) doc.addPage();
+    const logo = $('logo');
+    doc.addImage(logo, 'PNG', ML, 16, 26, 26);
+    setFont('bold', 10.5, DARK);
+    doc.text('NORSK FOSTERHJEMSFORENING', ML+31, 27);
+    setFont('normal', 9.5, SOFT);
+    doc.text('Rogaland', ML+31, 33);
+    doc.setDrawColor(214,224,217); doc.setLineWidth(0.4);
+    doc.line(ML, 47, MR, 47);
+    y = 58;
+  }
+  // Sørg for nok plass; legg til ny side med topp hvis ikke.
+  function need(space){
+    if(y + space > BOTTOM) header();
+  }
+  // paragraph -> returns y after; bryter side ved behov per linje
+  function para(text,y0,opt){
     opt = opt||{};
     const size = opt.size||10.5, lh = opt.lh|| (size*0.50);
-    setFont(opt.style||'normal', size, opt.color||INK);
     const lines = doc.splitTextToSize(text, opt.w||CW);
-    for(const ln of lines){ doc.text(ln, opt.x||ML, y); y += lh; }
+    for(const ln of lines){
+      need(lh);
+      setFont(opt.style||'normal', size, opt.color||INK);
+      doc.text(ln, opt.x||ML, y); y += lh;
+    }
     return y;
   }
-  function multi(text,y,opt){ // user multiline text, keep line breaks
+  function multi(text,y0,opt){
     const blocks = (text||'').split(/\r?\n/);
     for(const b of blocks){ y = para(b.length?b:' ', y, opt); }
     return y;
   }
 
-  /* ===================== SIDE 1 ===================== */
-  const logo = $('logo');
-  doc.addImage(logo, 'PNG', ML, 16, 26, 26);
-  setFont('bold', 10.5, DARK);
-  doc.text('NORSK FOSTERHJEMSFORENING', ML+31, 27);
-  setFont('normal', 9.5, SOFT);
-  doc.text('Rogaland', ML+31, 33);
-  doc.setDrawColor(214,224,217); doc.setLineWidth(0.4);
-  doc.line(ML, 47, MR, 47);
+  /* ===================== BREVET (flyter over sider ved behov) ===================== */
+  header();
 
-  let y = 58;
   // Avsender
   y = para('Navn: '+v.navn, y, {style:'bold'});
   const adrLines = v.adresse ? v.adresse.split(/\r?\n/).filter(l=>l.trim()) : [];
@@ -463,7 +491,6 @@ function buildDoc(){
 
   y += 8;
   // Til
-  setFont('bold',10.5,INK);
   y = para('Til:', y, {style:'bold'});
   y = multi(v.mottaker, y, {});
 
@@ -474,34 +501,45 @@ function buildDoc(){
 
   y += 12;
   // Overskrift
-  setFont('bold',13.5,DARK);
-  {
-    const hl = doc.splitTextToSize('SØKNAD OM ØKONOMISK STØTTE TIL DELTAKELSE PÅ FAMILIESAMLING/KURSHELG', CW);
-    for(const ln of hl){ doc.text(ln, ML, y); y += 6.6; }
-  }
+  need(16);
+  y = para('SØKNAD OM ØKONOMISK STØTTE TIL DELTAKELSE PÅ FAMILIESAMLING/KURSHELG', y, {style:'bold',size:13.5,lh:6.6,color:DARK});
   y += 4;
 
   // Brødtekst
   const legal = 'Jeg/vi er invitert til familiesamling/kurs i regi av Norsk Fosterhjemsforening Rogaland. Henviser i den anledning til Fosterhjemsavtalen hvor fosterforeldre forplikter seg til å ta imot kurs og opplæring som vil gjøre dem i stand til å ivareta oppgaven som fosterforeldre (pkt. 4.3.1), og hvor barneverntjenesten på sin side forplikter seg til å dekke utgifter til nødvendig kurs og opplæring for fosterforeldrene.';
   y = para(legal, y, {lh:5.4});
   y += 4;
-  y = para(BESKRIVELSE, y, {lh:5.4});
+  y = para(INVITASJON, y, {lh:5.4});
+  y += 4;
+  y = para(STED_TEKST, y, {lh:5.4});
   y += 4;
   const fast = 'Familiesamlinga er for hele fosterfamilien med faglig innhold/foredrag for de voksne. Barn og ungdom deltar hele helgen, og vi har ulike aktiviteter for de yngste barna og ungdommene. Det blir voksne sammen med dem hele dagen. I tillegg blir det tid til sosialt samvær for alle.';
   y = para(fast, y, {lh:5.4});
 
-  /* ===================== SIDE 2 ===================== */
-  doc.addPage();
-  y = 22;
+  // Foredragsholdere
+  y += 8;
+  need(16);
+  setFont('bold',12.5,DARK);
+  doc.text('Foredragsholdere', ML, y); y += 8;
+  FOREDRAGSHOLDERE.forEach(f=>{
+    need(20); // hold navn + start av tekst samlet
+    y = para(f.navn, y, {style:'bold',size:11,lh:5.6,color:INK});
+    y = para(f.tittel, y, {style:'italic',size:9.5,lh:5,color:GREEN});
+    y += 1;
+    y = para(f.tekst, y, {lh:5.4});
+    y += 5;
+  });
 
   // Tid og sted
+  y += 3;
+  need(14);
   setFont('bold',12.5,DARK);
   doc.text('Tid og sted', ML, y); y += 7;
   y = para(TID_STED, y, {lh:5.4});
   y += 7;
 
   // Oppsummering
-  setFont('bold',11.5,DARK);
+  need(20);
   y = para('Oppsummering av utgifter som regnes ut etter antall påmeldte:', y, {style:'bold',size:11.5,lh:6,color:DARK});
   y += 1;
   const incl = 'Deltakeravgift inkluderer: overnatting, kursavgift, møterom og kaffe etc., barnepass med aktiviteter lørdag, aktivitet søndag, kveldsmat fredag, frokost/lunsj/middag lørdag og frokost/lunsj søndag.';
@@ -511,9 +549,9 @@ function buildDoc(){
   // Kostnadstabell
   function costRow(label, amount, opt){
     opt = opt||{};
-    const bold = opt.bold;
-    setFont(bold?'bold':'normal', opt.size||10.5, opt.color||INK);
     const lines = doc.splitTextToSize(label, CW-40);
+    need(lines.length*5);
+    setFont(opt.bold?'bold':'normal', opt.size||10.5, opt.color||INK);
     doc.text(lines, ML, y);
     doc.text(amount, MR, y, {align:'right'});
     y += (lines.length*5);
@@ -522,7 +560,7 @@ function buildDoc(){
   if(c.barn>0) costRow('Barn/ungdom opp til 16 år ('+nok(CHILD)+' per person) × '+c.barn, nok(c.sumBarn));
 
   if(c.flybuss>0 || c.km>0 || c.andre>0){
-    y += 2;
+    y += 2; need(8);
     setFont('bold',10.5,INK);
     doc.text('Eventuelle reiseutgifter / andre utgifter:', ML, y); y += 5.5;
     if(c.flybuss>0) costRow('Fly/buss', nokAuto(c.flybuss));
@@ -530,7 +568,7 @@ function buildDoc(){
     if(c.andre>0) costRow('Andre utgifter'+(v.andreTekst?' – '+v.andreTekst:''), nokAuto(c.andre));
   }
 
-  y += 3;
+  y += 3; need(12);
   doc.setDrawColor(75,133,92); doc.setLineWidth(0.6);
   doc.line(ML, y, MR, y); y += 6.5;
   setFont('bold',12,DARK);
@@ -543,6 +581,7 @@ function buildDoc(){
   y = para(close, y, {lh:5.4});
   y += 12;
 
+  need(34); // hold signaturblokken samlet
   const stedDato = [v.sted, v.dato].filter(Boolean).join(', ');
   setFont('normal',10.5,INK);
   doc.text(stedDato || 'Sted, dato', ML, y); y += 12;
