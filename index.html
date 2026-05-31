@@ -100,6 +100,10 @@
     font-size:1.12rem;margin:0;color:var(--green-deep);
   }
   .sec-body{padding:20px 22px}
+  .subgroup{display:flex;align-items:center;gap:12px;margin:4px 0 -2px}
+  .subgroup:not(:first-child){margin-top:14px}
+  .subgroup h3{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--green-dark);margin:0;white-space:nowrap}
+  .subgroup .ln{flex:1;height:1px;background:var(--line)}
   .grid{display:grid;gap:16px}
   .grid.two{grid-template-columns:1fr 1fr}
   @media(max-width:560px){.grid.two{grid-template-columns:1fr}}
@@ -129,6 +133,11 @@
   .preview .row span:last-child{font-variant-numeric:tabular-nums;font-weight:700}
   .preview .total{border-top:2px solid var(--green);margin-top:8px;padding-top:8px;font-size:1.08rem;color:var(--green-deep)}
   .preview .muted{color:var(--ink-soft)}
+  .preview .grp{margin-top:12px;margin-bottom:2px;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--green-dark)}
+  .preview .grp:first-of-type{margin-top:4px}
+  .preview .subtotal{border-top:1px solid #c2d6ca;margin-top:4px;padding-top:5px;font-size:.92rem;color:var(--green-dark)}
+  .preview .subtotal span:last-child{font-weight:700}
+  .preview .row.indent span:first-child{padding-left:2px}
 
   /* Actions */
   .actions{
@@ -237,6 +246,7 @@
     <fieldset>
       <div class="sec-head"><div class="num">4</div><h2>Deltakere og utgifter</h2></div>
       <div class="sec-body grid">
+        <div class="subgroup"><h3>Påmelding</h3><div class="ln"></div></div>
         <div class="grid two" style="gap:16px">
           <div class="field">
             <label for="antallVoksne">Voksen – overnatting og fullpensjon</label>
@@ -263,14 +273,15 @@
           </div>
         </div>
 
+        <div class="subgroup"><h3>Reise og andre utgifter</h3><div class="ln"></div></div>
         <div class="grid two" style="gap:16px">
           <div class="field">
-            <label for="flybuss">Reiseutgifter – fly/buss (kr)</label>
+            <label for="flybuss">Fly/buss (kr)</label>
             <span class="hint">La stå tom om det ikke er aktuelt</span>
             <input type="number" id="flybuss" min="0" step="1" placeholder="0" inputmode="numeric">
           </div>
           <div class="field">
-            <label for="km">Reiseutgifter – bil (antall km)</label>
+            <label for="km">Bil (antall km)</label>
             <span class="hint">5,30 kr per km etter statens satser</span>
             <input type="number" id="km" min="0" step="1" placeholder="0" inputmode="numeric">
           </div>
@@ -407,21 +418,32 @@ function calc(){
   const sumDagIkke = dagIkke*DAY_NONMEMBER;
   const sumDagMed = dagMed*DAY_MEMBER;
   const sumBil = km*KM_RATE;
-  const total = sumVoksne+sumBarn+sumDagIkke+sumDagMed+flybuss+sumBil+andre;
-  return {voksne,barn,dagIkke,dagMed,flybuss,km,andre,sumVoksne,sumBarn,sumDagIkke,sumDagMed,sumBil,total};
+  const sumPamelding = sumVoksne+sumBarn+sumDagIkke+sumDagMed;
+  const sumReise = flybuss+sumBil+andre;
+  const total = sumPamelding+sumReise;
+  return {voksne,barn,dagIkke,dagMed,flybuss,km,andre,sumVoksne,sumBarn,sumDagIkke,sumDagMed,sumBil,sumPamelding,sumReise,total};
 }
 
 /* ---------- Forhåndsvisning ---------- */
 function renderPreview(){
   const c = calc();
   let h = '<h3>Beregnet sum</h3>';
-  h += `<div class="row"><span>Voksen – overnatting og fullpensjon (${nok(ADULT_FULL)} × ${c.voksne})</span><span>${nok(c.sumVoksne)}</span></div>`;
-  if(c.barn>0) h += `<div class="row"><span>Barn/ungdom t.o.m. 16 år – overnatting og fullpensjon (${nok(CHILD_FULL)} × ${c.barn})</span><span>${nok(c.sumBarn)}</span></div>`;
-  if(c.dagIkke>0) h += `<div class="row"><span>Voksne uten overnatting, ikke medlem (${nok(DAY_NONMEMBER)} × ${c.dagIkke})</span><span>${nok(c.sumDagIkke)}</span></div>`;
-  if(c.dagMed>0) h += `<div class="row"><span>Voksne uten overnatting, medlem (${nok(DAY_MEMBER)} × ${c.dagMed})</span><span>${nok(c.sumDagMed)}</span></div>`;
-  if(c.flybuss>0) h += `<div class="row"><span>Reise – fly/buss</span><span>${nokAuto(c.flybuss)}</span></div>`;
-  if(c.km>0) h += `<div class="row"><span>Reise – bil (${fmt(c.km)} km × 5,30 kr)</span><span>${nokAuto(c.sumBil)}</span></div>`;
-  if(c.andre>0) h += `<div class="row"><span>Andre utgifter</span><span>${nokAuto(c.andre)}</span></div>`;
+
+  h += '<div class="grp">Påmeldingsutgifter</div>';
+  h += `<div class="row indent"><span>Voksen – overnatting og fullpensjon (${nok(ADULT_FULL)} × ${c.voksne})</span><span>${nok(c.sumVoksne)}</span></div>`;
+  if(c.barn>0) h += `<div class="row indent"><span>Barn/ungdom t.o.m. 16 år – overnatting og fullpensjon (${nok(CHILD_FULL)} × ${c.barn})</span><span>${nok(c.sumBarn)}</span></div>`;
+  if(c.dagIkke>0) h += `<div class="row indent"><span>Voksne uten overnatting, ikke medlem (${nok(DAY_NONMEMBER)} × ${c.dagIkke})</span><span>${nok(c.sumDagIkke)}</span></div>`;
+  if(c.dagMed>0) h += `<div class="row indent"><span>Voksne uten overnatting, medlem (${nok(DAY_MEMBER)} × ${c.dagMed})</span><span>${nok(c.sumDagMed)}</span></div>`;
+  h += `<div class="row subtotal"><span>Sum påmeldingsutgifter</span><span>${nokAuto(c.sumPamelding)}</span></div>`;
+
+  if(c.flybuss>0 || c.km>0 || c.andre>0){
+    h += '<div class="grp">Reiseutgifter / andre utgifter</div>';
+    if(c.flybuss>0) h += `<div class="row indent"><span>Reise – fly/buss</span><span>${nokAuto(c.flybuss)}</span></div>`;
+    if(c.km>0) h += `<div class="row indent"><span>Reise – bil (${fmt(c.km)} km × 5,30 kr)</span><span>${nokAuto(c.sumBil)}</span></div>`;
+    if(c.andre>0) h += `<div class="row indent"><span>Andre utgifter</span><span>${nokAuto(c.andre)}</span></div>`;
+    h += `<div class="row subtotal"><span>Sum reiseutgifter / andre utgifter</span><span>${nokAuto(c.sumReise)}</span></div>`;
+  }
+
   h += `<div class="row total"><span>Totalt omsøkt beløp</span><span>${nokAuto(c.total)}</span></div>`;
   $('preview').innerHTML = h;
 }
@@ -594,24 +616,42 @@ function buildDoc(){
     doc.text(amount, MR, y, {align:'right'});
     y += (lines.length*5);
   }
-  setFont('bold',10.5,INK);
-  doc.text('Deltakeravgift:', ML, y); y += 5.5;
+  function groupHead(label){
+    y += 1; need(10);
+    setFont('bold',10.5,GREEN);
+    doc.text(label.toUpperCase(), ML, y); y += 1.5;
+    doc.setDrawColor(194,214,202); doc.setLineWidth(0.3);
+    doc.line(ML, y, MR, y); y += 5;
+  }
+  function subtotalRow(label, amount){
+    need(8);
+    doc.setDrawColor(194,214,202); doc.setLineWidth(0.3);
+    doc.line(ML, y-1.5, MR, y-1.5); y += 1.5;
+    setFont('bold',10.5,DARK);
+    doc.text(label, ML, y);
+    doc.text(amount, MR, y, {align:'right'});
+    y += 7;
+  }
+
+  // Bolk 1: Påmeldingsutgifter
+  groupHead('Påmeldingsutgifter');
   if(c.voksne>0) costRow('Voksen, overnatting og fullpensjon ('+nok(ADULT_FULL)+' per person) × '+c.voksne, nok(c.sumVoksne));
   if(c.barn>0) costRow('Barn/ungdom t.o.m. 16 år, overnatting og fullpensjon ('+nok(CHILD_FULL)+' per person) × '+c.barn, nok(c.sumBarn));
   if(c.dagIkke>0) costRow('Voksne uten overnatting, ikke medlem ('+nok(DAY_NONMEMBER)+' per person) × '+c.dagIkke, nok(c.sumDagIkke));
   if(c.dagMed>0) costRow('Voksne uten overnatting, medlem ('+nok(DAY_MEMBER)+' per person) × '+c.dagMed, nok(c.sumDagMed));
+  subtotalRow('Sum påmeldingsutgifter', nokAuto(c.sumPamelding));
 
+  // Bolk 2: Reiseutgifter / andre utgifter
   if(c.flybuss>0 || c.km>0 || c.andre>0){
-    y += 3; need(8);
-    setFont('bold',10.5,INK);
-    doc.text('Eventuelle reiseutgifter / andre utgifter:', ML, y); y += 5.5;
+    groupHead('Reiseutgifter / andre utgifter');
     if(c.flybuss>0) costRow('Fly/buss', nokAuto(c.flybuss));
     if(c.km>0) costRow('Bil ('+fmt(c.km)+' km × 5,30 kr etter statens satser)', nokAuto(c.sumBil));
     if(c.andre>0) costRow('Andre utgifter'+(v.andreTekst?' – '+v.andreTekst:''), nokAuto(c.andre));
+    subtotalRow('Sum reiseutgifter / andre utgifter', nokAuto(c.sumReise));
   }
 
-  y += 3; need(12);
-  doc.setDrawColor(75,133,92); doc.setLineWidth(0.6);
+  y += 1; need(12);
+  doc.setDrawColor(75,133,92); doc.setLineWidth(0.7);
   doc.line(ML, y, MR, y); y += 6.5;
   setFont('bold',12,DARK);
   doc.text('Totalt omsøkt beløp', ML, y);
