@@ -239,14 +239,27 @@
       <div class="sec-body grid">
         <div class="grid two" style="gap:16px">
           <div class="field">
-            <label for="antallVoksne">Antall voksne</label>
+            <label for="antallVoksne">Voksen – overnatting og fullpensjon</label>
             <span class="hint">3 500 kr per person</span>
             <input type="number" id="antallVoksne" min="0" step="1" value="2" inputmode="numeric">
           </div>
           <div class="field">
-            <label for="antallBarn">Antall barn/ungdom t.o.m. 16 år</label>
+            <label for="antallBarn">Barn/ungdom t.o.m. 16 år – overnatting og fullpensjon</label>
             <span class="hint">2 500 kr per person</span>
             <input type="number" id="antallBarn" min="0" step="1" value="0" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="grid two" style="gap:16px">
+          <div class="field">
+            <label for="antallDagIkkeMedlem">Voksne uten overnatting – ikke medlem</label>
+            <span class="hint">3 000 kr per person</span>
+            <input type="number" id="antallDagIkkeMedlem" min="0" step="1" value="0" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="antallDagMedlem">Voksne uten overnatting – medlem</label>
+            <span class="hint">2 200 kr per person</span>
+            <input type="number" id="antallDagMedlem" min="0" step="1" value="0" inputmode="numeric">
           </div>
         </div>
 
@@ -333,7 +346,11 @@
 </div>
 
 <script>
-const ADULT = 3500, CHILD = 2500, KM_RATE = 5.30;
+const ADULT_FULL = 3500;      // Voksen – overnatting og fullpensjon
+const CHILD_FULL = 2500;      // Barn/ungdom t.o.m. 16 år – overnatting og fullpensjon
+const DAY_NONMEMBER = 3000;   // Voksne uten overnatting – ikke medlem
+const DAY_MEMBER = 2200;      // Voksne uten overnatting – medlem
+const KM_RATE = 5.30;
 
 /* =========================================================
    INNHOLD OM SAMLINGEN – endre her hvis noe skal oppdateres.
@@ -352,8 +369,8 @@ const FOREDRAGSHOLDERE = [
     tekst:'Johanne S. Refseth er psykolog og forfatter, bedre kjent som «Psykolog med sovepose». Gjennom sin bok og sitt foredragsarbeid kombinerer hun fagkunnskap med nærhet og humor – og løfter frem viktigheten av å møte barn der de er. Hennes tilnærming gjenkjennes og verdsettes av fosterforeldre over hele landet.' },
 ];
 
-/* Tid og sted-linjen. Datoene settes inn når de er klare. */
-const TID_STED = 'Stemnestaden leirsted ved Grindafjorden i Aksdal. Dato: [settes inn når dette er klart].';
+/* Tid og sted-linjen. */
+const TID_STED = '16.–18. oktober 2026, Stemnestaden leirsted ved Grindafjorden i Aksdal.';
 
 const $ = id => document.getElementById(id);
 
@@ -383,25 +400,32 @@ function norDate(v){
 /* ---------- Utregning ---------- */
 function calc(){
   const voksne = int('antallVoksne'), barn = int('antallBarn');
+  const dagIkke = int('antallDagIkkeMedlem'), dagMed = int('antallDagMedlem');
   const flybuss = num('flybuss'), km = int('km'), andre = num('andre');
-  const sumVoksne = voksne*ADULT, sumBarn = barn*CHILD, sumBil = km*KM_RATE;
-  const total = sumVoksne+sumBarn+flybuss+sumBil+andre;
-  return {voksne,barn,flybuss,km,andre,sumVoksne,sumBarn,sumBil,total};
+  const sumVoksne = voksne*ADULT_FULL;
+  const sumBarn = barn*CHILD_FULL;
+  const sumDagIkke = dagIkke*DAY_NONMEMBER;
+  const sumDagMed = dagMed*DAY_MEMBER;
+  const sumBil = km*KM_RATE;
+  const total = sumVoksne+sumBarn+sumDagIkke+sumDagMed+flybuss+sumBil+andre;
+  return {voksne,barn,dagIkke,dagMed,flybuss,km,andre,sumVoksne,sumBarn,sumDagIkke,sumDagMed,sumBil,total};
 }
 
 /* ---------- Forhåndsvisning ---------- */
 function renderPreview(){
   const c = calc();
   let h = '<h3>Beregnet sum</h3>';
-  h += `<div class="row"><span>Voksne (${nok(ADULT)} × ${c.voksne})</span><span>${nok(c.sumVoksne)}</span></div>`;
-  if(c.barn>0) h += `<div class="row"><span>Barn/ungdom t.o.m. 16 år (${nok(CHILD)} × ${c.barn})</span><span>${nok(c.sumBarn)}</span></div>`;
+  h += `<div class="row"><span>Voksen – overnatting og fullpensjon (${nok(ADULT_FULL)} × ${c.voksne})</span><span>${nok(c.sumVoksne)}</span></div>`;
+  if(c.barn>0) h += `<div class="row"><span>Barn/ungdom t.o.m. 16 år – overnatting og fullpensjon (${nok(CHILD_FULL)} × ${c.barn})</span><span>${nok(c.sumBarn)}</span></div>`;
+  if(c.dagIkke>0) h += `<div class="row"><span>Voksne uten overnatting, ikke medlem (${nok(DAY_NONMEMBER)} × ${c.dagIkke})</span><span>${nok(c.sumDagIkke)}</span></div>`;
+  if(c.dagMed>0) h += `<div class="row"><span>Voksne uten overnatting, medlem (${nok(DAY_MEMBER)} × ${c.dagMed})</span><span>${nok(c.sumDagMed)}</span></div>`;
   if(c.flybuss>0) h += `<div class="row"><span>Reise – fly/buss</span><span>${nokAuto(c.flybuss)}</span></div>`;
   if(c.km>0) h += `<div class="row"><span>Reise – bil (${fmt(c.km)} km × 5,30 kr)</span><span>${nokAuto(c.sumBil)}</span></div>`;
   if(c.andre>0) h += `<div class="row"><span>Andre utgifter</span><span>${nokAuto(c.andre)}</span></div>`;
   h += `<div class="row total"><span>Totalt omsøkt beløp</span><span>${nokAuto(c.total)}</span></div>`;
   $('preview').innerHTML = h;
 }
-['antallVoksne','antallBarn','flybuss','km','andre'].forEach(id=>$(id).addEventListener('input',renderPreview));
+['antallVoksne','antallBarn','antallDagIkkeMedlem','antallDagMedlem','flybuss','km','andre'].forEach(id=>$(id).addEventListener('input',renderPreview));
 renderPreview();
 
 /* ---------- Validering ---------- */
@@ -412,7 +436,8 @@ function validate(){
   for(const [id,msg] of req){
     if(!$(id).value.trim()){ $(id).classList.add('err'); if(!firstBad) firstBad=[id,msg]; }
   }
-  if(int('antallVoksne')<1){ $('antallVoksne').classList.add('err'); if(!firstBad) firstBad=['antallVoksne','Det må være minst én voksen']; }
+  const totaltAntall = int('antallVoksne')+int('antallBarn')+int('antallDagIkkeMedlem')+int('antallDagMedlem');
+  if(totaltAntall<1){ $('antallVoksne').classList.add('err'); if(!firstBad) firstBad=['antallVoksne','Fyll inn antall deltakere i minst én kategori']; }
   return firstBad;
 }
 
@@ -466,11 +491,24 @@ function buildDoc(){
   function para(text,y0,opt){
     opt = opt||{};
     const size = opt.size||10.5, lh = opt.lh|| (size*0.50);
-    const lines = doc.splitTextToSize(text, opt.w||CW);
+    const w = opt.w||CW;
+    // Sett font FØR måling, så bredder beregnes riktig.
+    setFont(opt.style||'normal', size, opt.color||INK);
+    // Bryt opp ekstra lange ord (uten mellomrom) som ellers ville gått ut over margen.
+    const safe = (text||'').split(/\s+/).map(word=>{
+      if(doc.getTextWidth(word) <= w) return word;
+      let out = '', cur = '';
+      for(const ch of word){
+        if(doc.getTextWidth(cur+ch) > w && cur){ out += cur+'\u00AD '; cur = ch; }
+        else cur += ch;
+      }
+      return out + cur;
+    }).join(' ');
+    const lines = doc.splitTextToSize(safe, w);
     for(const ln of lines){
       need(lh);
       setFont(opt.style||'normal', size, opt.color||INK);
-      doc.text(ln, opt.x||ML, y); y += lh;
+      doc.text(ln.replace(/\u00AD/g,''), opt.x||ML, y); y += lh;
     }
     return y;
   }
@@ -502,7 +540,7 @@ function buildDoc(){
   y += 12;
   // Overskrift
   need(16);
-  y = para('SØKNAD OM ØKONOMISK STØTTE TIL DELTAKELSE PÅ FAMILIESAMLING/KURSHELG', y, {style:'bold',size:13.5,lh:6.6,color:DARK});
+  y = para('SØKNAD OM ØKONOMISK STØTTE TIL DELTAKELSE PÅ FAMILIESAMLING / KURSHELG', y, {style:'bold',size:12.5,lh:6.4,color:DARK});
   y += 4;
 
   // Brødtekst
@@ -516,11 +554,10 @@ function buildDoc(){
   const fast = 'Familiesamlinga er for hele fosterfamilien med faglig innhold/foredrag for de voksne. Barn og ungdom deltar hele helgen, og vi har ulike aktiviteter for de yngste barna og ungdommene. Det blir voksne sammen med dem hele dagen. I tillegg blir det tid til sosialt samvær for alle.';
   y = para(fast, y, {lh:5.4});
 
-  // Foredragsholdere
-  y += 8;
-  need(16);
-  setFont('bold',12.5,DARK);
-  doc.text('Foredragsholdere', ML, y); y += 8;
+  // ===== SIDE 2: Foredragsholdere + Tid og sted =====
+  header();
+  setFont('bold',13,DARK);
+  doc.text('Foredragsholdere', ML, y); y += 9;
   FOREDRAGSHOLDERE.forEach(f=>{
     need(20); // hold navn + start av tekst samlet
     y = para(f.navn, y, {style:'bold',size:11,lh:5.6,color:INK});
@@ -531,20 +568,21 @@ function buildDoc(){
   });
 
   // Tid og sted
-  y += 3;
+  y += 4;
   need(14);
-  setFont('bold',12.5,DARK);
-  doc.text('Tid og sted', ML, y); y += 7;
+  setFont('bold',13,DARK);
+  doc.text('Tid og sted', ML, y); y += 8;
   y = para(TID_STED, y, {lh:5.4});
-  y += 7;
 
-  // Oppsummering
-  need(20);
-  y = para('Oppsummering av utgifter som regnes ut etter antall påmeldte:', y, {style:'bold',size:11.5,lh:6,color:DARK});
-  y += 1;
-  const incl = 'Deltakeravgift inkluderer: overnatting, kursavgift, møterom og kaffe etc., barnepass med aktiviteter lørdag, aktivitet søndag, kveldsmat fredag, frokost/lunsj/middag lørdag og frokost/lunsj søndag.';
+  // ===== SIDE 3: Oppsummering av utgifter =====
+  header();
+  setFont('bold',13,DARK);
+  doc.text('Oppsummering av utgifter', ML, y); y += 8;
+  y = para('Utgiftene regnes ut etter antall påmeldte i hver kategori.', y, {size:10,lh:5.2,color:INK});
+  y += 2;
+  const incl = 'Deltakeravgift med overnatting og fullpensjon inkluderer: overnatting, kursavgift, møterom og kaffe etc., barnepass med aktiviteter lørdag, aktivitet søndag, kveldsmat fredag, frokost/lunsj/middag lørdag og frokost/lunsj søndag.';
   y = para(incl, y, {size:9.5,lh:4.8,color:SOFT});
-  y += 5;
+  y += 6;
 
   // Kostnadstabell
   function costRow(label, amount, opt){
@@ -556,11 +594,15 @@ function buildDoc(){
     doc.text(amount, MR, y, {align:'right'});
     y += (lines.length*5);
   }
-  costRow('Voksen ('+nok(ADULT)+' per person) × '+c.voksne, nok(c.sumVoksne));
-  if(c.barn>0) costRow('Barn/ungdom opp til 16 år ('+nok(CHILD)+' per person) × '+c.barn, nok(c.sumBarn));
+  setFont('bold',10.5,INK);
+  doc.text('Deltakeravgift:', ML, y); y += 5.5;
+  if(c.voksne>0) costRow('Voksen, overnatting og fullpensjon ('+nok(ADULT_FULL)+' per person) × '+c.voksne, nok(c.sumVoksne));
+  if(c.barn>0) costRow('Barn/ungdom t.o.m. 16 år, overnatting og fullpensjon ('+nok(CHILD_FULL)+' per person) × '+c.barn, nok(c.sumBarn));
+  if(c.dagIkke>0) costRow('Voksne uten overnatting, ikke medlem ('+nok(DAY_NONMEMBER)+' per person) × '+c.dagIkke, nok(c.sumDagIkke));
+  if(c.dagMed>0) costRow('Voksne uten overnatting, medlem ('+nok(DAY_MEMBER)+' per person) × '+c.dagMed, nok(c.sumDagMed));
 
   if(c.flybuss>0 || c.km>0 || c.andre>0){
-    y += 2; need(8);
+    y += 3; need(8);
     setFont('bold',10.5,INK);
     doc.text('Eventuelle reiseutgifter / andre utgifter:', ML, y); y += 5.5;
     if(c.flybuss>0) costRow('Fly/buss', nokAuto(c.flybuss));
