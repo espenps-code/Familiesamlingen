@@ -146,6 +146,19 @@
   }
   button.gen:hover{background:var(--green-dark);transform:translateY(-1px)}
   button.gen:active{transform:translateY(0)}
+  button.gen:disabled{background:#b9c9bf;box-shadow:none;cursor:not-allowed;transform:none}
+  button.gen.secondary{background:#fff;color:var(--green-dark);border:1.5px solid var(--green);box-shadow:none}
+  button.gen.secondary:hover{background:var(--green-tint)}
+
+  .preview-panel{margin-top:18px;text-align:left}
+  .pv-title{font-family:'Fraunces',serif;font-weight:600;color:var(--green-deep);margin:0 0 6px;font-size:1.28rem}
+  .pv-instruct{margin:0 0 16px;color:var(--ink-soft);font-size:.96rem}
+  .pv-frame-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#525659}
+  #pvFrame{width:100%;height:560px;border:0;display:block}
+  .pv-open{margin:10px 0 0;font-size:.88rem;text-align:center}
+  .pv-stale{margin:14px 0 0;background:var(--amber-bg);border:1px solid #ecd9af;border-left:5px solid var(--amber);border-radius:10px;padding:10px 14px;font-size:.92rem;color:#5c4a25;font-weight:700}
+  .pv-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+  @media(max-width:560px){.pv-actions{flex-direction:column}.pv-actions button{width:100%;justify-content:center}}
   .formmsg{margin-top:14px;font-weight:700;min-height:1.2em}
   .formmsg.bad{color:#c0492f}
   .formmsg.ok{color:var(--green-dark)}
@@ -283,13 +296,32 @@
     </fieldset>
 
     <div class="actions">
-      <p class="reminder"><b>Husk:</b> brevet lagres ikke her. Trykk på knappen for å laste ned PDF-en til din egen PC.</p>
-      <button type="button" class="gen" id="genBtn">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Last ned søknad som PDF
+      <p class="reminder"><b>Tips:</b> Forhåndsvis søknaden og les gjennom hele brevet før du laster det ned. Da kan du rette opp eventuelle feil først.</p>
+      <button type="button" class="gen" id="previewBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        Forhåndsvis søknaden
       </button>
       <div class="formmsg" id="formmsg"></div>
     </div>
+
+    <!-- Forhåndsvisning -->
+    <section class="actions preview-panel" id="previewPanel" hidden>
+      <h2 class="pv-title">Les gjennom søknaden</h2>
+      <p class="pv-instruct">Slik blir brevet. Les gjennom – vil du endre noe, gå tilbake til skjemaet og rett opp. Forhåndsvisningen oppdateres automatisk. Ingenting lagres før du selv laster det ned.</p>
+      <div class="pv-frame-wrap">
+        <iframe id="pvFrame" title="Forhåndsvisning av søknaden"></iframe>
+      </div>
+      <p class="pv-open"><a id="pvOpen" href="#" target="_blank" rel="noopener">Vises ikke brevet her? Åpne forhåndsvisningen i ny fane</a></p>
+      <div class="pv-stale" id="pvStale" hidden><span id="pvStaleText"></span></div>
+      <div class="pv-actions">
+        <button type="button" class="gen" id="downloadBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Last ned PDF
+        </button>
+        <button type="button" class="gen secondary" id="toFormBtn">Tilbake til skjemaet</button>
+      </div>
+      <div class="formmsg" id="dlmsg"></div>
+    </section>
 
   </form>
 
@@ -371,18 +403,8 @@ function validate(){
   return firstBad;
 }
 
-/* ---------- PDF ---------- */
-function lastNedPDF(){
-  const bad = validate();
-  const msg = $('formmsg');
-  if(bad){
-    msg.className='formmsg bad';
-    msg.textContent = bad[1] + '.';
-    $(bad[0]).scrollIntoView({behavior:'smooth',block:'center'});
-    return;
-  }
-  msg.className='formmsg'; msg.textContent='';
-
+/* ---------- Bygg PDF-dokument (forutsetter gyldig skjema) ---------- */
+function buildDoc(){
   const v = {
     navn: $('navn').value.trim(),
     adresse: $('adresse').value.trim(),
@@ -530,12 +552,71 @@ function lastNedPDF(){
 
   // Filnavn
   const safe = (v.barnNavn||v.navn||'soknad').replace(/[^\wÆØÅæøå \-]/g,'').trim().replace(/\s+/g,'_');
-  doc.save('Soknad_familiesamling_'+safe+'.pdf');
-
-  msg.className='formmsg ok';
-  msg.textContent='PDF lastet ned. Sjekk Nedlastinger-mappen på PC-en din.';
+  return { doc: doc, filename: 'Soknad_familiesamling_'+safe+'.pdf' };
 }
-$('genBtn').addEventListener('click', lastNedPDF);
+
+/* ---------- Forhåndsvisning og nedlasting ---------- */
+let previewDoc = null, previewName = null, previewUrl = null, refreshTimer = null;
+
+function renderDoc(){
+  const r = buildDoc();
+  previewDoc = r.doc; previewName = r.filename;
+  const blob = previewDoc.output('blob');
+  if(previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = URL.createObjectURL(blob);
+  $('pvFrame').src = previewUrl;
+  $('pvOpen').href = previewUrl;
+}
+
+function setPanelState(ready, staleMsg){
+  $('downloadBtn').disabled = !ready;
+  $('pvStale').hidden = ready;
+  if(!ready && staleMsg) $('pvStaleText').textContent = staleMsg;
+}
+
+function forhandsvis(){
+  const bad = validate();
+  const msg = $('formmsg');
+  if(bad){
+    msg.className='formmsg bad';
+    msg.textContent = bad[1] + '.';
+    $(bad[0]).scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  msg.className='formmsg'; msg.textContent='';
+  $('dlmsg').textContent='';
+  renderDoc();
+  setPanelState(true);
+  $('previewPanel').hidden = false;
+  $('previewPanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function lastNed(){
+  if(!previewDoc) return;
+  previewDoc.save(previewName);
+  const m = $('dlmsg');
+  m.className='formmsg ok';
+  m.textContent='PDF lastet ned. Sjekk Nedlastinger-mappen på PC-en din.';
+}
+
+// Endrer søkeren noe mens forhåndsvisningen er åpen, oppdateres den automatisk.
+function onFormChange(){
+  if($('previewPanel').hidden) return;
+  setPanelState(false, 'Oppdaterer forhåndsvisningen …');
+  $('dlmsg').textContent='';
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(()=>{
+    const bad = validate();
+    if(bad){ setPanelState(false, 'Fyll inn de påkrevde feltene for å kunne laste ned.'); return; }
+    renderDoc();
+    setPanelState(true);
+  }, 450);
+}
+
+$('previewBtn').addEventListener('click', forhandsvis);
+$('downloadBtn').addEventListener('click', lastNed);
+$('toFormBtn').addEventListener('click', ()=>$('skjema').scrollIntoView({behavior:'smooth',block:'start'}));
+$('skjema').addEventListener('input', onFormChange);
 </script>
 </body>
 </html>
